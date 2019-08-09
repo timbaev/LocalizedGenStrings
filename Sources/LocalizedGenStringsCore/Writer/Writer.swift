@@ -8,20 +8,14 @@
 import Foundation
 import PathKit
 
-public protocol Writer {
+protocol Writer {
 
     // MARK: - Instance Methods
 
-    func write(toXcodeProj xcodeProjPath: Path, localizedStrings strings: [String], lang: String, originalStrings: [String]?) throws
-}
+    func write(toXcodeProjPath xcodeProjPath: Path, localizedStrings: LocalizedStrings) throws
 
-// MARK: -
-
-extension Writer {
-
-    // MARK: - Instance Methods
-
-    func write(toXcodeProj xcodeProjPath: Path, localizedStrings strings: [String], lang: String = "en", originalStrings: [String]? = nil) throws {
-        try self.write(toXcodeProj: xcodeProjPath, localizedStrings: strings, lang: lang, originalStrings: originalStrings)
-    }
+    func write(toXcodeProjPath xcodeProjPath: Path,
+               translatedStrings: LocalizedStrings,
+               lang: String,
+               originalStrings: LocalizedStrings) throws
 }

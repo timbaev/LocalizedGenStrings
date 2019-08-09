@@ -9,9 +9,9 @@
 import Foundation
 import PathKit
 
-public protocol Parser {
+protocol Parser {
 
     // MARK: - Instance Methods
 
-    func parseLocalizedStrings(fromPath xcodeProjPath: Path) throws -> [String]
+    func parseLocalizedStrings(fromPath xcodeProjPath: Path) throws -> LocalizedStrings
 }

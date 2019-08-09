@@ -26,7 +26,7 @@ struct DefaultParser: Parser {
 
     // MARK: - Parser
 
-    func parseLocalizedStrings(fromPath xcodeProjPath: Path) throws -> [String] {
+    func parseLocalizedStrings(fromPath xcodeProjPath: Path) throws -> LocalizedStrings {
         let xcodeproj = try XcodeProj(path: xcodeProjPath)
 
         var localizedStrings: [String] = []
@@ -92,6 +92,6 @@ struct DefaultParser: Parser {
 
         // ibtool Avatar.storyboard --generate-strings-file temp.strings
 
-        return localizedStrings
+        return LocalizedStrings(codeStrings: localizedStrings, storyboardStrings: storyboardLocalizedStrings)
     }
 }

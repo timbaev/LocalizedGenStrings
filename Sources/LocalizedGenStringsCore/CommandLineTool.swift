@@ -40,9 +40,9 @@ public final class CommandLineTool {
 
     // MARK: -
 
-    public var parser: Parser = DefaultParser()
-    public var writer: Writer = DefaultWriter()
-    public var translator: Translator = YandexTranslator()
+    private var parser: Parser = DefaultParser()
+    private var writer: Writer = DefaultWriter()
+    private var translator: Translator = YandexTranslator()
 
     // MARK: - Initializers
 
@@ -50,7 +50,7 @@ public final class CommandLineTool {
         self.arguments = arguments
     }
 
-    public init(arguments: [String] = CommandLine.arguments, parser: Parser, writer: Writer, translator: Translator) {
+    init(arguments: [String] = CommandLine.arguments, parser: Parser, writer: Writer, translator: Translator) {
         self.arguments = arguments
         self.parser = parser
         self.writer = writer
@@ -74,7 +74,7 @@ public final class CommandLineTool {
         }
 
         do {
-            try self.writer.write(toXcodeProj: fullPath, localizedStrings: localizedStrings)
+            try self.writer.write(toXcodeProjPath: fullPath, localizedStrings: localizedStrings)
         } catch {
             throw Error.failedSave
         }
@@ -83,12 +83,24 @@ public final class CommandLineTool {
             return
         }
 
-        guard let translatedStrings = self.translator.translate(localizedStrings: localizedStrings, to: lang, key: translatorKey) else {
+        Log.i("Translating code localized strings...")
+
+        guard let translatedCodeStrings = self.translator.translate(localizedStrings: localizedStrings.codeStrings, to: lang, key: translatorKey) else {
             throw Error.failedTranlsation
         }
 
+        var translatedStoryboardStrings: [String: [String]] = [:]
+
+        localizedStrings.storyboardStrings.forEach { pair in
+            Log.i("Translating \(pair.key) localized strings...")
+
+            translatedStoryboardStrings[pair.key] = self.translator.translate(localizedStrings: pair.value, to: lang, key: translatorKey)
+        }
+
+        let translatedLocalizedStrings = LocalizedStrings(codeStrings: translatedCodeStrings, storyboardStrings: translatedStoryboardStrings)
+
         do {
-            try self.writer.write(toXcodeProj: fullPath, localizedStrings: translatedStrings, lang: lang, originalStrings: localizedStrings)
+            try self.writer.write(toXcodeProjPath: fullPath, translatedStrings: translatedLocalizedStrings, lang: lang, originalStrings: localizedStrings)
         } catch {
             throw Error.failedSave
         }

@@ -22,19 +22,7 @@ struct DefaultWriter: Writer {
 
     // MARK: - Instance Methods
 
-    func write(toXcodeProj xcodeProjPath: Path, localizedStrings strings: [String], lang: String = "en", originalStrings: [String]? = nil) throws {
-        let content: String
-
-        if let originalStrings = originalStrings {
-            content = strings.enumerated().reduce("") { result, enumerator in
-                return "\(result)\(originalStrings[enumerator.offset]) = \(enumerator.element);\n"
-            }
-        } else {
-            content = strings.reduce("") { result, string in
-                return "\(result)\(string) = \(string);\n"
-            }
-        }
-
+    private func write(content: String, toXcodeProjPath xcodeProjPath: Path, lang: String = "en") throws {
         let xcodeproj = try XcodeProj(path: xcodeProjPath)
 
         guard let mainGroup = xcodeproj.pbxproj.projects.first?.mainGroup else {
@@ -83,5 +71,50 @@ struct DefaultWriter: Writer {
         }
 
         try xcodeproj.write(path: xcodeProjPath)
+    }
+
+    // MARK: - Writer
+
+    func write(toXcodeProjPath xcodeProjPath: Path, localizedStrings: LocalizedStrings) throws {
+        var content = localizedStrings.codeStrings.reduce("") { result, string in
+            return "\(result)\(string) = \(string);\n"
+        }
+
+        content = localizedStrings.storyboardStrings.reduce(into: content) { result, pair in
+            let storyboardNameComment = "/* \(pair.key) */\n"
+
+            let formattedStrings = pair.value.reduce("") { result, string in
+                return "\(result)\(string) = \(string);\n"
+            }
+
+            result += storyboardNameComment + formattedStrings
+        }
+
+        try self.write(content: content, toXcodeProjPath: xcodeProjPath)
+    }
+
+    func write(toXcodeProjPath xcodeProjPath: Path,
+               translatedStrings: LocalizedStrings,
+               lang: String,
+               originalStrings: LocalizedStrings) throws {
+        var content = translatedStrings.codeStrings.enumerated().reduce("") { result, enumerator in
+            return "\(result)\(originalStrings.codeStrings[enumerator.offset]) = \(enumerator.element);\n"
+        }
+
+        content = translatedStrings.storyboardStrings.enumerated().reduce(into: content) { result, enumerator in
+            let storyboardNameComment = "/* \(enumerator.element.key) */\n"
+
+            let formattedStrings = enumerator.element.value.enumerated().reduce("") { result, valueEnumerator in
+                if let originalStoryboardStrings = originalStrings.storyboardStrings[enumerator.element.key] {
+                    return "\(result)\(originalStoryboardStrings[valueEnumerator.offset]) = \(enumerator.element);\n"
+                } else {
+                    return ""
+                }
+            }
+
+            result += storyboardNameComment + formattedStrings
+        }
+
+        try self.write(content: content, toXcodeProjPath: xcodeProjPath, lang: lang)
     }
 }

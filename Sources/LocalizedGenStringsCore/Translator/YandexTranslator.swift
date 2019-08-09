@@ -29,8 +29,6 @@ struct YandexTranslator: Translator {
 
         request.httpBody = body.data(using: .utf8)
 
-        Log.i("Translating to \(lang) language...")
-
         let taskResult = URLSession.shared.synchronousDataTask(with: request)
 
         guard let data = taskResult?.data, let response = taskResult?.response as? HTTPURLResponse, taskResult?.error == nil else {
