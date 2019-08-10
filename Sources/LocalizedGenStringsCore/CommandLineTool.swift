@@ -76,6 +76,7 @@ public final class CommandLineTool {
         do {
             try self.writer.write(toXcodeProjPath: fullPath, localizedStrings: localizedStrings)
         } catch {
+            Log.e(error)
             throw Error.failedSave
         }
 

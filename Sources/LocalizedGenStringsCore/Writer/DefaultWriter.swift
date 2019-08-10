@@ -9,7 +9,7 @@ import Foundation
 import PathKit
 import XcodeProj
 
-struct DefaultWriter: Writer {
+class DefaultWriter: Writer {
 
     // MARK: - Nested Types
 
@@ -18,9 +18,110 @@ struct DefaultWriter: Writer {
         // MARK: - Type Properties
 
         static let generatedFilename = "Localizable.strings"
+
+        static let pattern = #"(".*?") = (".*");"#
     }
 
     // MARK: - Instance Methods
+
+    private func findLocalizedFilePath(in xcodeProjPath: Path, lang: String) throws -> Path? {
+        let xcodeproj = try XcodeProj(path: xcodeProjPath)
+
+        guard let mainGroup = xcodeproj.pbxproj.projects.first?.mainGroup else {
+            return nil
+        }
+
+        guard let mainProjectGroup = mainGroup.children.first(where: { $0.sourceTree == .group }) as? PBXGroup else {
+            return nil
+        }
+
+        guard let mainProjectPath = try mainProjectGroup.fullPath(sourceRoot: xcodeProjPath.parent()) else {
+            return nil
+        }
+
+        let enumerator = FileManager.default.enumerator(atPath: mainProjectPath.string)
+
+        while let element = enumerator?.nextObject() as? String {
+            if element.hasSuffix("\(lang).lproj") {
+                let localizableFilePath = Path(element) + Path(Constants.generatedFilename)
+
+                return mainProjectPath + localizableFilePath
+            }
+        }
+
+        return nil
+    }
+
+    private func readLocalizedStrings(from filePath: Path) throws -> [String: String] {
+        var content: String = try filePath.read(.unicode)
+
+        let regex = try NSRegularExpression(pattern: Constants.pattern, options: .caseInsensitive)
+
+        let matches = regex.matches(in: content, options: [], range: NSRange(location: 0, length: content.utf16.count))
+
+        var fileLocalizedStrings: [String: String] = [:]
+
+        matches.forEach { match in
+            if let localizedStringRange = Swift.Range(match.range(at: 1), in: content), let valueRange = Swift.Range(match.range(at: 2), in: content) {
+                let localizedString = String(content[localizedStringRange])
+                let value = String(content[valueRange])
+
+                fileLocalizedStrings[localizedString] = value
+            }
+        }
+
+        return fileLocalizedStrings
+    }
+
+    private func merge(localizedStrings: LocalizedStrings, into localizedFilePath: Path) throws {
+        let fileLocalizedStrings = try self.readLocalizedStrings(from: localizedFilePath)
+
+        var content = localizedStrings.codeStrings.reduce("") { result, string in
+            return "\(result)\(string) = \(fileLocalizedStrings[string] ?? string);\n"
+        }
+
+        content = localizedStrings.storyboardStrings.reduce(into: content) { result, pair in
+            let storyboardNameComment = "/* \(pair.key) */\n"
+
+            let formattedStrings = pair.value.reduce("") { result, string in
+                return "\(result)\(string) = \(fileLocalizedStrings[string] ?? string);\n"
+            }
+
+            result += storyboardNameComment + formattedStrings
+        }
+
+        try localizedFilePath.write(content)
+    }
+
+    private func merge(translatedLocalizedStrings: LocalizedStrings, originalLocalizedStrings: LocalizedStrings, into localizedFilePath: Path) throws {
+        let fileLocalizedStrings = try self.readLocalizedStrings(from: localizedFilePath)
+
+        var content = translatedLocalizedStrings.codeStrings.enumerated().reduce("") { result, enumerator in
+            let originalString = originalLocalizedStrings.codeStrings[enumerator.offset]
+
+            return "\(result)\(originalString) = \(fileLocalizedStrings[originalString] ?? enumerator.element);\n"
+        }
+
+        content = translatedLocalizedStrings.storyboardStrings.enumerated().reduce(into: content) { result, enumerator in
+            let storyboardNameComment = "/* \(enumerator.element.key) */\n"
+
+            let formattedStrings = enumerator.element.value.enumerated().reduce("") { result, valueEnumerator in
+                if let originalStoryboardStrings = originalLocalizedStrings.storyboardStrings[enumerator.element.key] {
+                    let originalString = originalStoryboardStrings[valueEnumerator.offset]
+
+                    return "\(result)\(originalString) = \(fileLocalizedStrings[originalString] ?? valueEnumerator.element);\n"
+                } else {
+                    return ""
+                }
+            }
+
+            result += storyboardNameComment + formattedStrings
+        }
+
+        try localizedFilePath.write(content)
+    }
+
+    // MARK: -
 
     private func write(content: String, toXcodeProjPath xcodeProjPath: Path, lang: String = "en") throws {
         let xcodeproj = try XcodeProj(path: xcodeProjPath)
@@ -76,45 +177,53 @@ struct DefaultWriter: Writer {
     // MARK: - Writer
 
     func write(toXcodeProjPath xcodeProjPath: Path, localizedStrings: LocalizedStrings) throws {
-        var content = localizedStrings.codeStrings.reduce("") { result, string in
-            return "\(result)\(string) = \(string);\n"
-        }
-
-        content = localizedStrings.storyboardStrings.reduce(into: content) { result, pair in
-            let storyboardNameComment = "/* \(pair.key) */\n"
-
-            let formattedStrings = pair.value.reduce("") { result, string in
+        if let localizableFilePath = try self.findLocalizedFilePath(in: xcodeProjPath, lang: "en") {
+            try self.merge(localizedStrings: localizedStrings, into: localizableFilePath)
+        } else {
+            var content = localizedStrings.codeStrings.reduce("") { result, string in
                 return "\(result)\(string) = \(string);\n"
             }
 
-            result += storyboardNameComment + formattedStrings
-        }
+            content = localizedStrings.storyboardStrings.reduce(into: content) { result, pair in
+                let storyboardNameComment = "/* \(pair.key) */\n"
 
-        try self.write(content: content, toXcodeProjPath: xcodeProjPath)
+                let formattedStrings = pair.value.reduce("") { result, string in
+                    return "\(result)\(string) = \(string);\n"
+                }
+
+                result += storyboardNameComment + formattedStrings
+            }
+
+            try self.write(content: content, toXcodeProjPath: xcodeProjPath)
+        }
     }
 
     func write(toXcodeProjPath xcodeProjPath: Path,
                translatedStrings: LocalizedStrings,
                lang: String,
                originalStrings: LocalizedStrings) throws {
-        var content = translatedStrings.codeStrings.enumerated().reduce("") { result, enumerator in
-            return "\(result)\(originalStrings.codeStrings[enumerator.offset]) = \(enumerator.element);\n"
-        }
-
-        content = translatedStrings.storyboardStrings.enumerated().reduce(into: content) { result, enumerator in
-            let storyboardNameComment = "/* \(enumerator.element.key) */\n"
-
-            let formattedStrings = enumerator.element.value.enumerated().reduce("") { result, valueEnumerator in
-                if let originalStoryboardStrings = originalStrings.storyboardStrings[enumerator.element.key] {
-                    return "\(result)\(originalStoryboardStrings[valueEnumerator.offset]) = \(enumerator.element);\n"
-                } else {
-                    return ""
-                }
+        if let localizableFilePath = try self.findLocalizedFilePath(in: xcodeProjPath, lang: lang) {
+            try self.merge(translatedLocalizedStrings: translatedStrings, originalLocalizedStrings: originalStrings, into: localizableFilePath)
+        } else {
+            var content = translatedStrings.codeStrings.enumerated().reduce("") { result, enumerator in
+                return "\(result)\(originalStrings.codeStrings[enumerator.offset]) = \(enumerator.element);\n"
             }
 
-            result += storyboardNameComment + formattedStrings
-        }
+            content = translatedStrings.storyboardStrings.enumerated().reduce(into: content) { result, enumerator in
+                let storyboardNameComment = "/* \(enumerator.element.key) */\n"
 
-        try self.write(content: content, toXcodeProjPath: xcodeProjPath, lang: lang)
+                let formattedStrings = enumerator.element.value.enumerated().reduce("") { result, valueEnumerator in
+                    if let originalStoryboardStrings = originalStrings.storyboardStrings[enumerator.element.key] {
+                        return "\(result)\(originalStoryboardStrings[valueEnumerator.offset]) = \(enumerator.element);\n"
+                    } else {
+                        return ""
+                    }
+                }
+
+                result += storyboardNameComment + formattedStrings
+            }
+
+            try self.write(content: content, toXcodeProjPath: xcodeProjPath, lang: lang)
+        }
     }
 }

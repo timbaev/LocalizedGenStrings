@@ -20,8 +20,32 @@ struct DefaultParser: Parser {
         // MARK: - Type Properties
 
         static let pattern = #"("[^"]*?").localized\(\)"#
+        static let storyboardValuePattern = #"".*?" = (".*");"#
 
         static let tempStringsFilename = "temp.strings"
+        static let ibtoolPath = "/Applications/Xcode.app/Contents/Developer/usr/bin/ibtool"
+    }
+
+    // MARK: - Instance Methods
+
+    private func extractStrings(from tempLocalizedStringsFilePath: Path) throws -> [String] {
+        var content: String = try tempLocalizedStringsFilePath.read(.unicode)
+
+        let regex = try NSRegularExpression(pattern: Constants.storyboardValuePattern, options: .caseInsensitive)
+
+        let matches = regex.matches(in: content, options: [], range: NSRange(location: 0, length: content.utf16.count))
+
+        var strings: [String] = []
+
+        matches.forEach { match in
+            if let stringRange = Swift.Range(match.range(at: 1), in: content) {
+                let string = String(content[stringRange])
+
+                strings.append(string)
+            }
+        }
+
+        return strings
     }
 
     // MARK: - Parser
@@ -67,26 +91,24 @@ struct DefaultParser: Parser {
                     return
                 }
 
+                let tempLocalizedStringsPath = filePath.parent() + Path(Constants.tempStringsFilename)
+
                 let task = Process()
 
-                task.launchPath = filePath.parent().string
-                task.arguments = [path, "--generate-strings-file", Constants.tempStringsFilename]
+                task.launchPath = Constants.ibtoolPath
+                task.arguments = [filePath.string, "--generate-strings-file", tempLocalizedStringsPath.string]
                 task.launch()
                 task.waitUntilExit()
 
-                let tempStringFilePath = filePath.parent() + Path(Constants.tempStringsFilename)
+                let storyboardStrings = try self.extractStrings(from: tempLocalizedStringsPath)
 
-                guard let stringsDictionary = NSDictionary(contentsOf: tempStringFilePath.url) as? [String: String] else {
-                    return
-                }
-
-                stringsDictionary.values.forEach { value in
+                storyboardStrings.forEach { value in
                     if !localizedStrings.contains(value) {
                         storyboardLocalizedStrings[path, default: []].append(value)
                     }
                 }
 
-                try FileManager.default.removeItem(at: tempStringFilePath.url)
+                try FileManager.default.removeItem(at: tempLocalizedStringsPath.url)
             }
         }
 
