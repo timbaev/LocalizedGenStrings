@@ -103,6 +103,7 @@ public final class CommandLineTool {
         do {
             try self.writer.write(toXcodeProjPath: fullPath, translatedStrings: translatedLocalizedStrings, lang: lang, originalStrings: localizedStrings)
         } catch {
+            Log.e(error)
             throw Error.failedSave
         }
     }

@@ -112,8 +112,6 @@ struct DefaultParser: Parser {
             }
         }
 
-        // ibtool Avatar.storyboard --generate-strings-file temp.strings
-
         return LocalizedStrings(codeStrings: localizedStrings, storyboardStrings: storyboardLocalizedStrings)
     }
 }

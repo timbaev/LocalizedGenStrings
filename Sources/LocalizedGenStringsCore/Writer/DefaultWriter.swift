@@ -43,9 +43,11 @@ class DefaultWriter: Writer {
 
         while let element = enumerator?.nextObject() as? String {
             if element.hasSuffix("\(lang).lproj") {
-                let localizableFilePath = Path(element) + Path(Constants.generatedFilename)
+                let localizableFilePath = mainProjectPath + Path(element) + Path(Constants.generatedFilename)
 
-                return mainProjectPath + localizableFilePath
+                if localizableFilePath.exists {
+                    return localizableFilePath
+                }
             }
         }
 
@@ -53,7 +55,7 @@ class DefaultWriter: Writer {
     }
 
     private func readLocalizedStrings(from filePath: Path) throws -> [String: String] {
-        var content: String = try filePath.read(.unicode)
+        var content: String = try filePath.read()
 
         let regex = try NSRegularExpression(pattern: Constants.pattern, options: .caseInsensitive)
 
