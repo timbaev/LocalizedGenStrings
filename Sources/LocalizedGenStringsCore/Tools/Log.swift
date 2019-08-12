@@ -14,12 +14,12 @@ private enum LogEvent: String {
 
     // MARK: - Enumeration Cases
 
-    case e = "[‼️]" // error
-    case i = "[ℹ️]" // info
-    case d = "[💬]" // debug
-    case v = "[🔬]" // verbose
-    case w = "[⚠️]" // warning
-    case s = "[🔥]" // severe
+    case e = "‼️" // error
+    case i = "ℹ️" // info
+    case d = "💬" // debug
+    case v = "🔬" // verbose
+    case w = "⚠️" // warning
+    case s = "🔥" // severe
 }
 
 // MARK: - OutputType

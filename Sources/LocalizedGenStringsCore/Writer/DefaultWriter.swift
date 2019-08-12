@@ -20,6 +20,8 @@ class DefaultWriter: Writer {
         static let generatedFilename = "Localizable.strings"
 
         static let pattern = #"(".*?") = (".*");"#
+
+        static let excludedPaths = ["Pods"]
     }
 
     // MARK: - Instance Methods
@@ -45,7 +47,7 @@ class DefaultWriter: Writer {
             if element.hasSuffix("\(lang).lproj") {
                 let localizableFilePath = mainProjectPath + Path(element) + Path(Constants.generatedFilename)
 
-                if localizableFilePath.exists {
+                if localizableFilePath.exists, !localizableFilePath.components.intersects(with: Constants.excludedPaths) {
                     return localizableFilePath
                 }
             }

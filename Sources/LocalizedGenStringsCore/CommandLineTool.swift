@@ -34,6 +34,15 @@ public final class CommandLineTool {
         }
     }
 
+    // MARK: -
+
+    private enum Constants {
+
+        // MARK: - Type Properties
+
+        static let excludedPaths = ["Pods"]
+    }
+
     // MARK: - Instance Properties
 
     private let arguments: [String]
@@ -61,7 +70,12 @@ public final class CommandLineTool {
 
     private func run(path: String, lang: String? = nil, key: String? = nil) throws {
         let enumerator = FileManager.default.enumerator(atPath: path)
-        let filePaths = enumerator?.allObjects as? [String]
+
+        let filePaths = (enumerator?.allObjects as? [String])?.filter { filePath in
+            let components = filePath.components(separatedBy: "/")
+
+            return !components.intersects(with: Constants.excludedPaths)
+        }
 
         guard let xcodeprojPath = filePaths?.first(where: { $0.contains(".xcodeproj") }) else {
             throw Error.xcodeProjectNotFound
