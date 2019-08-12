@@ -66,11 +66,11 @@
       },
       {
         "package": "XcodeProj",
-        "repositoryURL": "https://github.com/tuist/xcodeproj.git",
+        "repositoryURL": "https://github.com/timbaev/xcodeproj.git",
         "state": {
           "branch": null,
-          "revision": "b951777f42e9acbfb8f19da623b43aaa604422f9",
-          "version": "7.0.0"
+          "revision": "1c3074601a65f72f3aced9686329eb9f4fc52c08",
+          "version": "7.0.1"
         }
       }
     ]

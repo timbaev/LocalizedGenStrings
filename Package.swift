@@ -6,7 +6,7 @@ import PackageDescription
 let package = Package(
     name: "LocalizedGenStrings",
     dependencies: [
-        .package(url: "https://github.com/tuist/xcodeproj.git", .upToNextMajor(from: "7.0.0")),
+        .package(url: "https://github.com/timbaev/xcodeproj.git", .upToNextMajor(from: "7.0.1")),
         .package(url: "https://github.com/kylef/Commander.git", from: "0.9.0"),
         .package(url: "https://github.com/IBDecodable/IBDecodable.git", from: "0.0.4")
     ],

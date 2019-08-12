@@ -162,7 +162,7 @@ class DefaultWriter: Writer {
             if let existsLocalizableGroup = mainProjectGroup.group(named: Constants.generatedFilename) as? PBXVariantGroup {
                 localizableGroup = existsLocalizableGroup
             } else {
-                localizableGroup = try mainProjectGroup.addVariantGroup(named: Constants.generatedFilename, options: .withoutFolder).first!
+                localizableGroup = try mainProjectGroup.addVariantGroup(named: Constants.generatedFilename).first!
             }
 
             try localizableGroup.addFile(at: localizableFilePath, sourceRoot: xcodeProjPath.parent())
