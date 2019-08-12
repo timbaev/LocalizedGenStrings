@@ -218,7 +218,7 @@ class DefaultWriter: Writer {
 
                 let formattedStrings = enumerator.element.value.enumerated().reduce("") { result, valueEnumerator in
                     if let originalStoryboardStrings = originalStrings.storyboardStrings[enumerator.element.key] {
-                        return "\(result)\(originalStoryboardStrings[valueEnumerator.offset]) = \(enumerator.element);\n"
+                        return "\(result)\(originalStoryboardStrings[valueEnumerator.offset]) = \(valueEnumerator.element);\n"
                     } else {
                         return ""
                     }
