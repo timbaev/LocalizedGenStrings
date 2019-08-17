@@ -82,6 +82,8 @@ struct DefaultParser: Parser {
                 }
             }
 
+            var addedStoryboardStrings = Set<String>()
+
             try nativeTarget.resourcesBuildPhase()?.files?.forEach { fileReference in
                 guard let path = fileReference.file?.path, path.hasSuffix("storyboard") else {
                     return
@@ -102,9 +104,10 @@ struct DefaultParser: Parser {
 
                 let storyboardStrings = try self.extractStrings(from: tempLocalizedStringsPath)
 
-                storyboardStrings.forEach { value in
-                    if !localizedStrings.contains(value) {
-                        storyboardLocalizedStrings[path, default: []].append(value)
+                storyboardStrings.forEach { storyboardString in
+                    if !localizedStrings.contains(storyboardString), !addedStoryboardStrings.contains(storyboardString) {
+                        storyboardLocalizedStrings[path, default: []].append(storyboardString)
+                        addedStoryboardStrings.insert(storyboardString)
                     }
                 }
 
